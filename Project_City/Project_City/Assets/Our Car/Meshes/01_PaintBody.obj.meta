@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: b388a520b3d95d2eb30549f3b727874d
+ModelImporter:
+  serializedVersion: 23
+  internalIDToNameTable: []
+  externalObjects: {}
+  materials:
+    materialImportMode: 0
+  meshes:
+    globalScale: 1
+    meshCompression: 0
+    isReadable: 1
+  animationType: 0
+  importAnimation: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
