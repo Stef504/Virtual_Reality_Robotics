@@ -58,6 +58,11 @@ docker exec -it <name of conatiner> /bin/bash
 ```bash
 docker ps
 ```
+Don't forget to:
+
+```bash
+source install/setup.bash
+```
 
 Then ensure to start the *TCP Server Endpoint*. In the docker terminal run the following command: 
 
@@ -74,3 +79,4 @@ ros2 topic list
 and whatever ros commands you need. 
 
 Always use `Ctrl + C` to exit, so it brings you back to Docker root.
+
