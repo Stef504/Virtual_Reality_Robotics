@@ -80,7 +80,7 @@ Center the object within your frame:
 -  work in real time. 
 -  people, vehicle,
 -  Cameras and lidar info : sensor fusion, object detection. Lidar check and camera (opencv install plugin and use their naming, annotation labelling). Camera topics to publish messages, sensor fusion, object detection, depth info (not necessary) 
--  Based off its (pilot car) environment 
+- Based off its (pilot car) environment 
 - Just needs a latest message
 - could even do running people , over taking, 
 
