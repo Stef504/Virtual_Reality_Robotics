@@ -102,3 +102,19 @@ Student 2 -> spatial map module (shows a marker of current position within the w
 Student 3 -> Obstacle awareness module (uses raycasting to detect obstacles on the light/right side of the pilot car) -> their main focus is pedestrian awareness -> their UI is the bar of obstacle closeness they also need to show bounding boxes (which to me makes more sense on the camera module but maybe they ccan alter there to show also the image with bounding box (so adapt the code) and include the bars (an idea)) -> student 2 can create the different walking scenarios (since im already doing that i can do a scenario with people crossing a road)
 
 Student 4 -> Semantic perception module (labels objects and places it within a map) -> assigns labels, enable /disable semantic visualization ayer -> since we all kinda use CV library i assume that, the information gathered (from us) will be linked to the "ObservedObject" names into context.Current.objects so we need to make sure we link it to yours.
+
+
+### Student 1
+- creating a pose publisher since the spatial map already contains it might as well be the one to publish it. This is taken from the sceneTeleopDataSources. With this remember that Unity frame and Ros frames are different Unity Coordinate Space (X Right, Y Up, Z Forward) to ROS Coordinate Space (X Forward, Y Left, Z Up)
+    - Using  `geometry_msgs/msg/PoseStamped.msg` which is a compact form of : `std_msgs/msg/Header header`, and `geometry_msgs/msg/Pose pose`. This was the reference coordinate frame and timestamp are sent together. To retrieve the most up to date coordinate frame. 
+    - We read from what the sceneTeleopDataSources produces, hence the names
+    - Let the user decide topic name 
+    - FrameID has to be map because of the way nav2 works, and it uses a global mapping
+
+
+- I can also alter my ui, add bounding boxes on the top, still use the marker to track its position (locally of course)
+
+
+- alter the paths taken by the padestrians and other vehicles (i.e changing the router mover script or the street motion animator).
+  - Lets set the scene:
+  - PARKING SCENE: going from a certain point until the car is parked. 
