@@ -57,6 +57,9 @@
          (Drives StreetRouteMover / Car Controller)
 
 
+---
+
+
                            ┌──────────────────────────────────────────┐
                            │          UNITY SIMULATION SCENE          │
                            └────────────────────┬─────────────────────┘
@@ -90,7 +93,7 @@
 │ Publish /cmd_vel commands to test vehicle control scripts   │
 └─────────────────────────────────────────────────────────────┘
 
-
+---
 
 ### Integration Logic:
 4 modules, 
@@ -118,3 +121,12 @@ Student 4 -> Semantic perception module (labels objects and places it within a m
 - alter the paths taken by the padestrians and other vehicles (i.e changing the router mover script or the street motion animator).
   - Lets set the scene:
   - PARKING SCENE: going from a certain point until the car is parked. 
+  - Walking Padestrian: Walking across the road, loop
+  - More Buildings, moving cars, pedestrians.
+
+When adding new models to a scene:
+- Scale mismatch, axis orientation, physics and raycast interference (make sure raycast masks handle it cleanly)
+- Recommened it .fbx, if from Unity Asset Store simply import directlt into open project
+- Follow instructions and download and then import
+- Drag the new car models into the `Hierarchy Window`. Always use `Preabs` because they come pre-assembled with their materials, colors and textures already applied. 
+- The shaders might be different so in `materials` click on one of the items, then in the top menu: `Edit -> Rendering -> Materials -> Converted Selected Built-in Materials to URP ` that way it converts to our shaders
