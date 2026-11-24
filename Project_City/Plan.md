@@ -120,9 +120,10 @@ Student 4 -> Semantic perception module (labels objects and places it within a m
 
 - alter the paths taken by the padestrians and other vehicles (i.e changing the router mover script or the street motion animator).
   - Lets set the scene:
-  - PARKING SCENE: going from a certain point until the car is parked. 
+  - PARKING SCENE: going from a certain point until the car is parked. ✅
   - Walking Padestrian: Walking across the road, loop
   - More Buildings, moving cars, pedestrians.
+  - Moving cars that form traffic
 
 When adding new models to a scene:
 - Scale mismatch, axis orientation, physics and raycast interference (make sure raycast masks handle it cleanly)
@@ -130,3 +131,12 @@ When adding new models to a scene:
 - Follow instructions and download and then import
 - Drag the new car models into the `Hierarchy Window`. Always use `Preabs` because they come pre-assembled with their materials, colors and textures already applied. 
 - The shaders might be different so in `materials` click on one of the items, then in the top menu: `Edit -> Rendering -> Materials -> Converted Selected Built-in Materials to URP ` that way it converts to our shaders
+
+Moving cars that form traffic:
+  - We have to modify the `StreetRouteMover.cs` to `StreetRouteMover_Mod1` because we want to implement that the non-controller cars can turn right/left, do a start and stop manuever.
+- We also add a `IntersectionZone.cs` that attaches a 3D Box Collider at the intersection that detects when a car enters the zone and tells it how long to stop and which direction to turn. When reached it turns and continues based off the desired travel distance to continue
+- In each Moving vehicle ensure that the `Trigger` variable in enabled in the `Box Collider`, and attached the `CarFollowingSensor` and `StreetRouteMover_Mod1`code as a component. From there we can choose the speed, travel distance and where it turns left/right/Continues at an intersection
+- In the CarSensorFollwing Script this sends out raycasting so it can detect vehicles in front of it, and this way can commit the start/stop action in the `StreetRouteMover_Mod1`
+- When seting the `Vehicle layer` , it is important to choose `Yes, change children` because of how the 3D car model hierarchy is, The Parent GameObject holds the StreetRouteMver and CarFollowSensor while the child GameObject holds the Box Colliders and Mesh
+- Also in the CarFollowingSensor make sure that the ray-casting doesnt collide with itself, but do it for each vehicle not the .root (which is the subdivision it is in). `!hit.collider.transform.IsChildOf(transform)`
+- The `StreetRouteMover_Mod1` is where we turn the car around and continue to drive back
