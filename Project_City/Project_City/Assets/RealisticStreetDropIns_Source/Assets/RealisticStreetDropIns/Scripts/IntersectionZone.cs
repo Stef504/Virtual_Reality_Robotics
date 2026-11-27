@@ -14,8 +14,10 @@ public class IntersectionZone : MonoBehaviour
     [Tooltip("Radius (in meters) of the turning arc. Match this to your road lane width.")]
     public float turnRadius = 4.5f;
 
-    [Tooltip("Distance (in meters) for the car to drive down the new road after turning.")]
-    public float nextRoadDistance = 35.0f;
+    [Tooltip("Check to override what happens when the post-turn distance is reached.")]
+    public bool overrideEndBehavior = true;
+    public RouteEndBehavior postTurnEndBehavior = RouteEndBehavior.Despawn;
+
 
     private void OnTriggerEnter(Collider other)
     {
@@ -29,7 +31,13 @@ public class IntersectionZone : MonoBehaviour
             IntersectionAction action = mover.preferredTurn;
             // LOG 2: Confirms StreetRouteMover was found and coroutine was called
             Debug.Log($"[CALLING STOP WAIT TURN] Calling mover on {mover.gameObject.name}");
-            mover.StartCoroutine(mover.StopWaitAndTurn(stopDuration, action, nextRoadDistance, turnRadius));
+            mover.StartCoroutine(mover.StopWaitAndTurn(
+                stopDuration, 
+                turnAction, 
+                turnRadius,
+                postTurnDistance,
+                overrideEndBehavior ? postTurnEndBehavior : (RouteEndBehavior?)null
+            ));
         }
     }
 }

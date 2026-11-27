@@ -140,3 +140,9 @@ Moving cars that form traffic:
 - When seting the `Vehicle layer` , it is important to choose `Yes, change children` because of how the 3D car model hierarchy is, The Parent GameObject holds the StreetRouteMver and CarFollowSensor while the child GameObject holds the Box Colliders and Mesh
 - Also in the CarFollowingSensor make sure that the ray-casting doesnt collide with itself, but do it for each vehicle not the .root (which is the subdivision it is in). `!hit.collider.transform.IsChildOf(transform)`
 - The `StreetRouteMover_Mod1` is where we turn the car around and continue to drive back
+- `distance` in the `StreetRouteMover_Mod1` is the path length
+- `followingDistance` in the `CarFollowingSensor` is how far foward the sensor looks to detect a car ahead. Both set by the user
+- Before the origin was overwritten after the intersection because we started with a new heading angle and we still wanted to continue to drive straight. Now we saved the intial position to loop back to the start
+- Added all scenario's under the *02_UrbTraff*, where we can toggle between which scenario gets intiated. The code deactivates the other hierachies and only activates the one chosen.
+- For the pedestrians I had to modify the code so that the pedestrians cross the road, turn (with `IntersectionZone.cs`), and then after some meters it dissappears. 
+- fix positioning in street route mover

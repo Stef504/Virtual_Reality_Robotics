@@ -13,12 +13,19 @@ namespace RealisticStreetDropIns
         [Min(0.1f)] public float distance = 15f;
         [Min(0.01f)] public float speed = 1.35f;
         public Vector3 localDirection = Vector3.forward;
-        [Tooltip("Loop: warp back to the start at the end. Off: turn around and walk back.")]
-        public bool loopToStart = false;
+
+        [Header("End of Route Action")]
+        [Tooltip("What happens when the object reaches the end of its path distance.")]
+        public RouteEndBehavior endBehavior = RouteEndBehavior.LoopToStart;
+
+        [Header("Timing & Turning")]
         [Min(0f)] public float initialDelay = 0f;
         [Tooltip("Turn the whole object to face movement direction.")]
         public bool turnToFaceDirection = true;
         [Range(0f, 1080f)] public float turnSpeedDegrees = 540f;
+
+        [Tooltip("Distance (meters) to drive straight INTO junction before banking into the curve.")]
+        public float entryForwardDistance = 3f;
 
         private Vector3 origin, direction;
         private Quaternion initialRotation;
@@ -26,6 +33,13 @@ namespace RealisticStreetDropIns
         private int sign = 1;
         private bool initialized;
         private bool isStopped = false;
+
+        // Saved Scene Spawn References (For Loop To Start)
+        private Vector3 initialSpawnPosition;
+        private Quaternion initialSpawnRotation;
+        private float initialSpawnDistance;
+        private RouteEndBehavior initialEndBehavior;
+
 
         /// <summary>Guards against executing multiple turning coroutines simultaneously.</summary>
         public bool IsTurning { get; private set; } = false;
@@ -37,13 +51,47 @@ namespace RealisticStreetDropIns
 
         public IntersectionAction preferredTurn = IntersectionAction.TurnLeft;
 
-        void OnEnable() { initialized = false; }
 
         void Start()
         {
+            // Cache original scene placement
+            initialSpawnPosition = transform.position;
+            initialSpawnRotation = transform.rotation;
+            initialSpawnDistance = distance;
+
             InitializeSegment(transform.position, transform.rotation, localDirection, distance);
             delay = initialDelay;
             initialized = true;
+        }
+
+        void Awake()
+        {
+            // Cache original scene placement before any script toggling occurs
+            initialSpawnPosition = transform.position;
+            initialSpawnRotation = transform.rotation;
+            initialSpawnDistance = distance;
+        }
+
+        void OnEnable()
+        {
+            // Resets vehicle position and state whenever the scenario parent is set to Active (true)
+            transform.position = initialSpawnPosition;
+            transform.rotation = initialSpawnRotation;
+            IsTurning = false;
+            isStopped = false;
+            
+            InitializeSegment(initialSpawnPosition, initialSpawnRotation, localDirection, initialSpawnDistance);
+            delay = initialDelay;
+            initialized = true;
+        }
+
+        void OnDisable()
+        {
+            // Cleanly stops all turning coroutines when the scenario parent is set to Active (false)
+            StopAllCoroutines();
+            IsTurning = false;
+            isStopped = true;
+            CurrentSpeed = 0f;
         }
 
         /// <summary>Resets origin and heading for a new road segment after turning at an intersection.</summary>
@@ -72,8 +120,31 @@ namespace RealisticStreetDropIns
 
             if (progress >= distance)
             {
-                progress = loopToStart ? 0f : distance;
-                if (!loopToStart) sign = -1;
+                switch (endBehavior)
+                {
+                    case RouteEndBehavior.LoopToStart:
+                        transform.position = initialSpawnPosition;
+                        transform.rotation = initialSpawnRotation;
+                        InitializeSegment(initialSpawnPosition, initialSpawnRotation, localDirection, initialSpawnDistance);
+                        return;
+
+                    case RouteEndBehavior.Reverse:
+                        progress = distance;
+                        sign = -1;
+                        break;
+
+                    case RouteEndBehavior.Stop:
+                        progress = distance;
+                        isStopped = true;
+                        CurrentSpeed = 0f;
+                        return;
+
+                    case RouteEndBehavior.Despawn:
+                        isStopped = true;
+                        CurrentSpeed = 0f;
+                        gameObject.SetActive(false); // Disables character from scene
+                        return;
+                }
             }
             else if (progress <= 0f && sign < 0)
             {
@@ -95,67 +166,85 @@ namespace RealisticStreetDropIns
 
         /// <summary>Pauses the car at an intersection, turns it, and resumes movement down the next street.</summary>
         /// <summary>Executes a smooth radial arc turn into the perpendicular lane.</summary>
-        public IEnumerator StopWaitAndTurn(float stopDuration, IntersectionAction action, float nextSegmentDistance, float turnRadius)
+        public IEnumerator StopWaitAndTurn(
+            float stopDuration,
+            IntersectionAction action,
+            float turnRadius,
+            float newSegmentDistance = 0f,
+            RouteEndBehavior? newEndBehavior = null
+            )
         {
-            // Guard: Ignore if already turning
             if (IsTurning) yield break;
 
-            // DIAGNOSTIC LOG 1: Check if coroutine is triggered at all
-            Debug.Log($"[INTERSECTION ENTERED] {gameObject.name} received Action: {action}");
-    
             IsTurning = true;
             isStopped = true;
             CurrentSpeed = 0f;
 
-            // 1. Wait at intersection (e.g. Red Light / Stop Sign)
+            // 1. Wait at the intersection (Stop sign / Red light)
             if (stopDuration > 0f)
             {
                 yield return new WaitForSeconds(stopDuration);
             }
 
-            // 2. Perform Kinematic Arc Turn if turning Left or Right
+            // 2. Drive straight forward into the intersection center before turning
+            if (entryForwardDistance > 0f)
+            {
+                float driven = 0f;
+                while (driven < entryForwardDistance)
+                {
+                    float step = speed * Time.deltaTime;
+                    driven += step;
+                    transform.position += transform.forward * step;
+                    CurrentSpeed = speed;
+                    yield return null;
+                }
+            }
+
+            // 3. Perform Closed-Loop Kinematic Arc Turn
             if (action == IntersectionAction.TurnLeft || action == IntersectionAction.TurnRight)
             {
                 float turnAngle = (action == IntersectionAction.TurnRight) ? 90f : -90f;
-                float dirSign = (action == IntersectionAction.TurnRight) ? 1f : -1f;
-
                 float safeRadius = Mathf.Max(0.5f, turnRadius);
                 float angularSpeedDeg = (speed / safeRadius) * Mathf.Rad2Deg;
-                float totalTime = Mathf.Abs(turnAngle) / angularSpeedDeg;
+
+                Quaternion startRotation = transform.rotation;
+                Quaternion targetRotation = startRotation * Quaternion.Euler(0f, turnAngle, 0f);
 
                 Vector3 lastPos = transform.position;
-                Quaternion startRotation = transform.rotation;
 
-                float elapsed = 0f;
-                while (elapsed < totalTime)
+                while (Quaternion.Angle(transform.rotation, targetRotation) > 0.05f)
                 {
                     float dt = Time.deltaTime;
-                    elapsed += dt;
 
-                    // Move forward along current heading while rotating
                     transform.position += transform.forward * speed * dt;
-                    transform.Rotate(0f, dirSign * angularSpeedDeg * dt, 0f);
+                    transform.rotation = Quaternion.RotateTowards(
+                        transform.rotation,
+                        targetRotation,
+                        angularSpeedDeg * dt
+                    );
 
-                    // Paints a magenta trail in Scene View showing the exact turning curve
                     Debug.DrawLine(lastPos, transform.position, Color.magenta, 10.0f);
                     lastPos = transform.position;
 
                     CurrentSpeed = speed;
                     yield return null;
                 }
-            
 
-                // Measure total angular difference between start of turn and end of turn
-                float completedAngle = Quaternion.Angle(startRotation, transform.rotation);
-                Debug.Log($"[ARC TURN COMPLETE] {gameObject.name} completed turn. Total Rotated Angle: {completedAngle:F2}°");
+                transform.rotation = targetRotation;
             }
-                // 3. Reset origin and direction heading for the new street lane
-                InitializeSegment(transform.position, transform.rotation, localDirection, nextSegmentDistance);
 
-                // 4. Resume straight-line Update movement
-                isStopped = false;
-                IsTurning = false;
+            // 4. Re-initialize baseline segment for the new road lane
+            InitializeSegment(transform.position, transform.rotation, localDirection, distance);
+
+            // Update end-of-route behavior (e.g. Despawn or Stop)
+            if (newEndBehavior.HasValue)
+            {
+                endBehavior = newEndBehavior.Value;
             }
+
+            isStopped = false;
+            IsTurning = false;
+        }        
         void OnDrawGizmosSelected()
         {
             Vector3 start;
